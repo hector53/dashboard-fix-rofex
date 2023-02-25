@@ -51,16 +51,36 @@
         <tr v-for="(item, index) in data.ordenes" :key="index">
           <th class="text-center" scope="row">{{ item.symbol }}</th>
           <th class="text-center" scope="row">
-            <span v-if="item.data[0]">{{ item.data[0].size }}</span>
+            <span v-if="item.data[0] && item.data[0].side == 'Buy'">{{
+              item.data[0].size
+            }}</span>
+            <span v-if="item.data[1] && item.data[1].side == 'Buy'">{{
+              item.data[1].size
+            }}</span>
           </th>
           <th class="text-center" scope="row">
-            <span v-if="item.data[0]">{{ item.data[0].price }}</span>
+            <span v-if="item.data[0] && item.data[0].side == 'Buy'">{{
+              item.data[0].price
+            }}</span>
+            <span v-if="item.data[1] && item.data[1].side == 'Buy'">{{
+              item.data[1].price
+            }}</span>
           </th>
           <th class="text-center" scope="row">
-            <span v-if="item.data[1]">{{ item.data[1].price }}</span>
+            <span v-if="item.data[0] && item.data[0].side == 'Sell'">{{
+              item.data[0].price
+            }}</span>
+            <span v-if="item.data[1] && item.data[1].side == 'Sell'">{{
+              item.data[1].price
+            }}</span>
           </th>
           <th class="text-center" scope="row">
-            <span v-if="item.data[1]">{{ item.data[1].size }}</span>
+            <span v-if="item.data[0] && item.data[0].side == 'Sell'">{{
+              item.data[0].size
+            }}</span>
+            <span v-if="item.data[1] && item.data[1].side == 'Sell'">{{
+              item.data[1].size
+            }}</span>
           </th>
         </tr>
       </tbody>

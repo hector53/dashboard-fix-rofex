@@ -42,13 +42,20 @@ const optionsLiveDemo = reactive([
   { value: 1, text: "Live" },
   { value: 2, text: "Demo" },
 ]);
-// Input state variables
+// Input state variables for the form fix
 const state = reactive({
-  target: null,
+  target: "ROFX",
   sender: null,
   password: null,
   account: null,
   liveDemo: null,
+});
+
+//inputs para el formulario de bots
+const inputsBots = reactive({
+  type_bot: null,
+  minRate: null,
+  maxRate: null,
 });
 // Validation rules
 const rules = computed(() => {
@@ -122,7 +129,7 @@ async function iniciar_fix() {
     .catch((error) => {
       console.log(error);
       store.pageLoader({ mode: "off" });
-      toast.fire("Oops...", "Something went wrong!", "error");
+      toast.fire("Oops...", error.response.data.message, "error");
     });
 }
 
@@ -157,15 +164,13 @@ async function detener_fix() {
 }
 
 async function get_bots() {
-  if (data.isSessionActive) {
-    console.log("entrando a get_bots");
-    await axios
-      .get(store.urlBackend + "/get_bots/" + data.sessionID)
-      .then((response) => {
-        console.log("bots", response);
-        data.arrayBots = response.data.arrayBots;
-      });
-  }
+  console.log("entrando a get_bots");
+  await axios
+    .get(store.urlBackend + "/get_bots/" + data.sessionID)
+    .then((response) => {
+      console.log("bots", response);
+      data.arrayBots = response.data.arrayBots;
+    });
 }
 
 async function get_session_fix() {
@@ -194,7 +199,6 @@ async function get_session_fix() {
         nextTick(() => {
           console.log("nextTick", data);
         });
-        get_bots();
       }
       store.pageLoader({ mode: "off" });
     })
@@ -303,6 +307,7 @@ function addBotToDB() {
     axios
       .post(store.urlBackend + "/add_bot", {
         symbols: data.symbolsSelected,
+        opciones: inputsBots,
       })
       .then((response) => {
         console.log(response);
@@ -329,6 +334,7 @@ onMounted(async () => {
   // perform async actions
 
   await get_session_fix();
+  await get_bots();
   //await get_bots();
   if (data.isSessionActive) {
     if (localStorage.securityFixDemo || localStorage.securityFixLive) {
@@ -364,7 +370,6 @@ socket.addEventListener("message", (event) => {
   var data = JSON.parse(event.data);
   console.log("Message from server ", data);
   if (data.type == "security") {
-    /*
     if (localStorage.securityFix) {
       var arraySymbols = JSON.parse(localStorage.securityFix);
       data.tickers.foreach((tick) => {
@@ -374,7 +379,7 @@ socket.addEventListener("message", (event) => {
       });
     } else {
       localStorage.securityFix = JSON.stringify(data.tickers);
-    }*/
+    }
   }
 });
 </script>
@@ -402,13 +407,36 @@ socket.addEventListener("message", (event) => {
               <i class="fa fa-fw fa-times"></i>
             </button>
           </template>
-          {{ filteredSymbols }}
+
           <template #content>
-            <div class="block-content block-content-full text-end bg-body">
-              <div class="row">
-                <div class="col-lg-12 space-y-5">
-                  <!-- Form Labels on top - Default Style -->
-                  <form @sumbit.prevent>
+            <div class="block-content block-content-full text-left bg-body">
+              <form @sumbit.prevent>
+                <div class="row push">
+                  <div class="col-lg-12">
+                    <div class="mb-4">
+                      <label class="form-check-label mb-2" for="type_bot"
+                        >Type Bot</label
+                      >
+                      <select
+                        class="form-select"
+                        id="type_bot"
+                        name="type_bot"
+                        v-model="inputsBots.type_bot"
+                      >
+                        <option value="0" selected>Triangulo</option>
+                        <option value="1" selected>CI-48</option>
+                      </select>
+                    </div>
+                    <div class="mb-4">
+                      <p v-if="inputsBots.type_bot == 0">
+                        Bot tipo triangulo: necesita 3 simbolos, futuro1,
+                        futuro2 y pase, deben ir en ese orden
+                      </p>
+                      <p v-if="inputsBots.type_bot == 1">
+                        Bot tipo CI-48: necesita 2 simbolos, CI y 48, deben ir
+                        en ese orden
+                      </p>
+                    </div>
                     <div class="mb-4">
                       <input
                         type="text"
@@ -432,7 +460,7 @@ socket.addEventListener("message", (event) => {
                       </div>
                     </div>
 
-                    <class class="mb-4" v-if="data.symbolsSelected.length > 0">
+                    <div class="mb-4" v-if="data.symbolsSelected.length > 0">
                       <BaseBlock title="Symbols">
                         <div class="list-group push">
                           <a
@@ -449,10 +477,34 @@ socket.addEventListener("message", (event) => {
                           </a>
                         </div>
                       </BaseBlock>
-                    </class>
-                  </form>
+                    </div>
+
+                    <div class="mb-4" v-if="inputsBots.type_bot == 1">
+                      <label class="form-check-label mb-2" for="type_bot"
+                        >Minimum arbitrage rate</label
+                      >
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="Min rate"
+                        v-model="inputsBots.minRate"
+                      />
+                    </div>
+                    <div class="mb-4" v-if="inputsBots.type_bot == 1">
+                      <label class="form-check-label mb-2" for="type_bot"
+                        >Maximum arbitrage rate</label
+                      >
+                      <input
+                        type="text"
+                        class="form-control"
+                        placeholder="Max rate"
+                        v-model="inputsBots.maxRate"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </form>
+
               <button
                 type="button"
                 class="btn btn-sm btn-alt-secondary me-1"
@@ -510,10 +562,9 @@ socket.addEventListener("message", (event) => {
         >
           <div class="col-12">
             <label class="visually-hidden" for="target">Target</label>
-            <input
+            <select
               :disabled="data.isSessionActive"
-              type="text"
-              class="form-control"
+              class="form-select"
               id="target"
               name="target"
               placeholder="ROFX / BYMA"
@@ -522,7 +573,11 @@ socket.addEventListener("message", (event) => {
               }"
               v-model="state.target"
               @blur="v$.target.$touch"
-            />
+            >
+              <option value="ROFX" selected>ROFX</option>
+              <option value="BYMA">BYMA</option>
+            </select>
+
             <div
               v-if="v$.target.$errors.length"
               class="invalid-feedback animated fadeIn"
