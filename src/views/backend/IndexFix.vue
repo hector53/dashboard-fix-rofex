@@ -155,6 +155,7 @@ async function detener_fix() {
       data.sessionID = null;
       toast.fire("Success", "Everything was updated perfectly!", "success");
       localStorage.removeItem("securityFix");
+      localStorage.removeItem("sesionFix");
     })
     .catch((error) => {
       console.log(error);
