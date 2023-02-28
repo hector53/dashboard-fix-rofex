@@ -25,7 +25,15 @@ const data = reactive({
   arrayBots: [],
   searchSymbol: "",
   symbolsSelected: [],
+  isEditBot: false,
 });
+const dataEdit = reactive({
+  idBot: null,
+  symbolsBot: null,
+  typeBot: null,
+  statusBot: null,
+});
+
 /*
 watch(data, async (currentValue, oldvalue) => {
   if (currentValue.sessionID > 0 && currentValue.arrayBots.length == 0) {
@@ -56,6 +64,8 @@ const inputsBots = reactive({
   type_bot: null,
   minRate: null,
   maxRate: null,
+  spreadMin: null,
+  sizeMax: null,
 });
 // Validation rules
 const rules = computed(() => {
@@ -241,6 +251,22 @@ const filteredSymbols = computed(() => {
   }
 });
 
+function editBot(id, symbols, type, status, opciones) {
+  console.log("editBot", id, symbols, type, status);
+  data.isEditBot = true;
+  dataEdit.idBot = id;
+  dataEdit.symbolsBot = symbols;
+  inputsBots.type_bot = type;
+  inputsBots.sizeMax = opciones.sizeMax;
+  if (type == 1) {
+    inputsBots.minRate = opciones.minRate;
+    inputsBots.maxRate = opciones.maxRate;
+  }
+  if (type == 0) {
+    inputsBots.spreadMin = opciones.spreadMin;
+  }
+}
+
 function detenerBot(id) {
   store.pageLoader({ mode: "on" });
   axios
@@ -302,6 +328,47 @@ function deleteBot(id) {
     });
 }
 
+function editBotToDB(id) {
+  var id_fix = 0;
+  var opciones = {};
+  if (data.isSessionActive) {
+    id_fix = data.sessionID;
+  }
+  if (inputsBots.type_bot == 1) {
+    opciones = {
+      minRate: inputsBots.minRate,
+      maxRate: inputsBots.maxRate,
+      sizeMax: inputsBots.sizeMax,
+    };
+  }
+  if (inputsBots.type_bot == 0) {
+    opciones = {
+      spreadMin: inputsBots.spreadMin,
+      sizeMax: inputsBots.sizeMax,
+    };
+  }
+  store.pageLoader({ mode: "on" });
+  axios
+    .post(store.urlBackend + "/editBot", {
+      id_bot: id,
+      id_fix: id_fix,
+      opciones: opciones,
+      typeBot: inputsBots.type_bot,
+    })
+    .then((response) => {
+      console.log(response);
+      data.isEditBot = false;
+      get_bots();
+      store.pageLoader({ mode: "off" });
+      toast.fire("Success", "Everything was updated perfectly!", "success");
+    })
+    .catch((error) => {
+      console.log(error);
+      store.pageLoader({ mode: "off" });
+      toast.fire("Oops...", "Something went wrong!", "error");
+    });
+}
+
 function addBotToDB() {
   if (data.symbolsSelected.length > 0) {
     store.pageLoader({ mode: "on" });
@@ -329,9 +396,30 @@ function addSymbol(option) {
   data.symbolsSelected.push(option);
   data.searchSymbol = "";
 }
+function resetFormBot() {
+  data.isEditBot = false;
+  data.symbolsSelected = [];
+  data.searchSymbol = "";
+  inputsBots.maxRate = null;
+  inputsBots.minRate = null;
+  inputsBots.type_bot = null;
+  inputsBots.sizeMax = null;
+  inputsBots.spreadMin = null;
+}
 
 onMounted(async () => {
   console.log("Mounted");
+  var ModalAddBot = document.getElementById("modal-bot");
+  ModalAddBot.addEventListener("hidden.bs.modal", function (event) {
+    console.log("hidden modal bot add");
+    resetFormBot();
+
+    // do something...
+  });
+  ModalAddBot.addEventListener("show.bs.modal", function (event) {
+    // do something...
+    console.log("show modal bot add");
+  });
   // perform async actions
 
   await get_session_fix();
@@ -389,15 +477,15 @@ socket.addEventListener("message", (event) => {
   <!-- Fade In Block Modal -->
   <div
     class="modal fade"
-    id="modal-block-fadein"
+    id="modal-bot"
     tabindex="-1"
     role="dialog"
-    aria-labelledby="modal-block-fadein"
+    aria-labelledby="modal-bot"
     aria-hidden="true"
   >
     <div class="modal-dialog" role="document">
       <div class="modal-content">
-        <BaseBlock title="Add Bot" transparent class="mb-0">
+        <BaseBlock title="Bot" transparent class="mb-0">
           <template #options>
             <button
               type="button"
@@ -419,13 +507,14 @@ socket.addEventListener("message", (event) => {
                         >Type Bot</label
                       >
                       <select
+                        :disabled="data.isEditBot"
                         class="form-select"
                         id="type_bot"
                         name="type_bot"
                         v-model="inputsBots.type_bot"
                       >
-                        <option value="0" selected>Triangulo</option>
-                        <option value="1" selected>CI-48</option>
+                        <option value="0">Triangulo</option>
+                        <option value="1">CI-48</option>
                       </select>
                     </div>
                     <div class="mb-4">
@@ -438,7 +527,7 @@ socket.addEventListener("message", (event) => {
                         en ese orden
                       </p>
                     </div>
-                    <div class="mb-4">
+                    <div class="mb-4" v-if="data.isEditBot == false">
                       <input
                         type="text"
                         class="form-control"
@@ -480,12 +569,24 @@ socket.addEventListener("message", (event) => {
                       </BaseBlock>
                     </div>
 
+                    <div class="mb-4" v-if="inputsBots.type_bot == 0">
+                      <label class="form-check-label mb-2" for="spreadMin"
+                        >Spread Min</label
+                      >
+                      <input
+                        type="number"
+                        class="form-control"
+                        placeholder="Spread Min"
+                        v-model="inputsBots.spreadMin"
+                      />
+                    </div>
+
                     <div class="mb-4" v-if="inputsBots.type_bot == 1">
                       <label class="form-check-label mb-2" for="type_bot"
                         >Minimum arbitrage rate</label
                       >
                       <input
-                        type="text"
+                        type="number"
                         class="form-control"
                         placeholder="Min rate"
                         v-model="inputsBots.minRate"
@@ -496,10 +597,21 @@ socket.addEventListener("message", (event) => {
                         >Maximum arbitrage rate</label
                       >
                       <input
-                        type="text"
+                        type="number"
                         class="form-control"
                         placeholder="Max rate"
                         v-model="inputsBots.maxRate"
+                      />
+                    </div>
+                    <div class="mb-4">
+                      <label class="form-check-label mb-2" for="sizeMax"
+                        >Size Max</label
+                      >
+                      <input
+                        type="number"
+                        class="form-control"
+                        placeholder="Size Max"
+                        v-model="inputsBots.sizeMax"
                       />
                     </div>
                   </div>
@@ -514,12 +626,22 @@ socket.addEventListener("message", (event) => {
                 Close
               </button>
               <button
+                v-if="data.isEditBot == false"
                 type="button"
                 class="btn btn-sm btn-primary"
                 data-bs-dismiss="modal"
                 @click="addBotToDB()"
               >
                 Add
+              </button>
+              <button
+                v-else
+                type="button"
+                class="btn btn-sm btn-primary"
+                data-bs-dismiss="modal"
+                @click="editBotToDB(dataEdit.idBot)"
+              >
+                Edit
               </button>
             </div>
           </template>
@@ -703,15 +825,27 @@ socket.addEventListener("message", (event) => {
           type="button"
           class="btn-block-option"
           data-bs-toggle="modal"
-          data-bs-target="#modal-block-fadein"
+          data-bs-target="#modal-bot"
+          @click="data.isEditBot = false"
         >
           <i class="si si-plus"></i>
         </button>
       </template>
+      <div class="btnEscucharMercados">
+        <button
+          type="button"
+          @click="escuchar_mercados()"
+          class="btn btn-sm btn-warning"
+        >
+          Escuchar Mercados <i class="fa fa-fw fa-ear-listen"></i>
+        </button>
+      </div>
+
       <table class="table table-bordered table-striped table-vcenter">
         <thead>
           <tr>
             <th class="fw-semibold fs-sm" style="width: 60%">Symbols</th>
+            <th class="d-none d-md-table-cell" style="width: 10%">TypeBot</th>
             <th class="d-none d-md-table-cell" style="width: 10%">Status</th>
             <th class="text-center" style="width: 3%">Actions</th>
           </tr>
@@ -721,6 +855,10 @@ socket.addEventListener("message", (event) => {
             <td class="d-md-table-cell fs-sm">
               {{ bot.symbols }}
             </td>
+            <td class="d-md-table-cell fs-sm">
+              <span v-if="bot.type == 0">Triangulos</span>
+              <span v-if="bot.type == 1">CI-48</span>
+            </td>
             <td class="d-none d-sm-table-cell">
               <span class="badge rounded-pill bg-success" v-if="bot.status == 1"
                 >Activo</span
@@ -729,6 +867,7 @@ socket.addEventListener("message", (event) => {
             </td>
             <td class="text-center">
               <div class="btn-group">
+                <!--boton play o stop -->
                 <button
                   type="button"
                   class="btn btn-sm btn-alt-secondary"
@@ -745,7 +884,48 @@ socket.addEventListener("message", (event) => {
                 >
                   <i class="fa fa-stop"></i>
                 </button>
+                <!--boton escuchar o silenciar  -->
+                <button
+                  type="button"
+                  class="btn btn-sm btn-alt-secondary"
+                  v-if="bot.status == 1 || bot.status == 2"
+                >
+                  <i class="fa fa-volume-high"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-alt-secondary"
+                  @click="escucharBotById(bot.id)"
+                  v-else
+                >
+                  <i class="fa fa-volume-xmark"></i>
+                </button>
 
+                <button
+                  type="button"
+                  @click="
+                    editBot(
+                      bot.id,
+                      bot.symbols,
+                      bot.type,
+                      bot.status,
+                      bot.opciones
+                    )
+                  "
+                  class="btn btn-sm btn-alt-secondary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#modal-bot"
+                >
+                  <i class="fa fa-fw fa-edit"></i>
+                </button>
+                <button
+                  type="button"
+                  :disabled="bot.status == 0"
+                  @click="dataBot(bot.id)"
+                  class="btn btn-sm btn-alt-secondary"
+                >
+                  <i class="fa fa-fw fa-chart-pie"></i>
+                </button>
                 <button
                   type="button"
                   @click="deleteBot(bot.id)"
@@ -761,3 +941,11 @@ socket.addEventListener("message", (event) => {
     </BaseBlock>
   </div>
 </template>
+<style>
+.btnEscucharMercados {
+  display: flex;
+  margin-bottom: 20px;
+  width: 100%;
+  justify-content: flex-end;
+}
+</style>
