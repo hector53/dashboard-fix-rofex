@@ -64,7 +64,7 @@ const inputsBots = reactive({
   type_bot: null,
   minRate: null,
   maxRate: null,
-  spreadMin: null,
+  spreadMin: "",
   sizeMax: null,
 });
 // Validation rules
@@ -404,7 +404,7 @@ function resetFormBot() {
   inputsBots.minRate = null;
   inputsBots.type_bot = null;
   inputsBots.sizeMax = null;
-  inputsBots.spreadMin = null;
+  inputsBots.spreadMin = "";
 }
 
 onMounted(async () => {
