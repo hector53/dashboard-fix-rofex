@@ -287,13 +287,33 @@ function detenerBot(id) {
     });
 }
 
-function startBot(id) {
+function escuchar_mercados() {
+  store.pageLoader({ mode: "on" });
+  axios
+    .post(store.urlBackend + "/escuchar_mercados", {
+      id_fix: data.sessionID,
+    })
+    .then((response) => {
+      console.log(response);
+      get_bots();
+      store.pageLoader({ mode: "off" });
+      toast.fire("Success", "Everything was updated perfectly!", "success");
+    })
+    .catch((error) => {
+      console.log(error);
+      store.pageLoader({ mode: "off" });
+      toast.fire("Oops...", "Something went wrong!", "error");
+    });
+}
+
+function startBot(id, soloEscucharMercado) {
   if (data.isSessionActive && data.isSecuritysOn) {
     store.pageLoader({ mode: "on" });
     axios
       .post(store.urlBackend + "/startBot", {
         id: id,
         id_fix: data.sessionID,
+        soloEscucharMercado: soloEscucharMercado,
       })
       .then((response) => {
         console.log(response);
@@ -371,11 +391,26 @@ function editBotToDB(id) {
 
 function addBotToDB() {
   if (data.symbolsSelected.length > 0) {
+    var opciones = {};
+    if (inputsBots.type_bot == 1) {
+      opciones = {
+        minRate: inputsBots.minRate,
+        maxRate: inputsBots.maxRate,
+        sizeMax: inputsBots.sizeMax,
+      };
+    }
+    if (inputsBots.type_bot == 0) {
+      opciones = {
+        spreadMin: inputsBots.spreadMin,
+        sizeMax: inputsBots.sizeMax,
+      };
+    }
     store.pageLoader({ mode: "on" });
     axios
       .post(store.urlBackend + "/add_bot", {
         symbols: data.symbolsSelected,
-        opciones: inputsBots,
+        opciones: opciones,
+        type_bot: inputsBots.type_bot,
       })
       .then((response) => {
         console.log(response);
@@ -860,10 +895,15 @@ socket.addEventListener("message", (event) => {
               <span v-if="bot.type == 1">CI-48</span>
             </td>
             <td class="d-none d-sm-table-cell">
+              <span class="badge rounded-pill bg-warning" v-if="bot.status == 0"
+                >Inactivo</span
+              >
               <span class="badge rounded-pill bg-success" v-if="bot.status == 1"
                 >Activo</span
               >
-              <span class="badge rounded-pill bg-warning" v-else>Inactivo</span>
+              <span class="badge rounded-pill bg-info" v-if="bot.status == 2"
+                >Solo escuchar</span
+              >
             </td>
             <td class="text-center">
               <div class="btn-group">
@@ -871,8 +911,8 @@ socket.addEventListener("message", (event) => {
                 <button
                   type="button"
                   class="btn btn-sm btn-alt-secondary"
-                  @click="startBot(bot.id)"
-                  v-if="bot.status == 0"
+                  @click="startBot(bot.id, false)"
+                  v-if="bot.status == 0 || bot.status == 2"
                 >
                   <i class="fa fa-play"></i>
                 </button>
@@ -880,7 +920,7 @@ socket.addEventListener("message", (event) => {
                   type="button"
                   class="btn btn-sm btn-alt-secondary"
                   @click="detenerBot(bot.id)"
-                  v-else
+                  v-if="bot.status == 1"
                 >
                   <i class="fa fa-stop"></i>
                 </button>
@@ -895,7 +935,7 @@ socket.addEventListener("message", (event) => {
                 <button
                   type="button"
                   class="btn btn-sm btn-alt-secondary"
-                  @click="escucharBotById(bot.id)"
+                  @click="startBot(bot.id, true)"
                   v-else
                 >
                   <i class="fa fa-volume-xmark"></i>
