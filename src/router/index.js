@@ -4,14 +4,12 @@ import NProgress from "nprogress/nprogress.js";
 
 // Main layout variations
 import LayoutSimple from "@/layouts/variations/Simple.vue";
-import LayoutLanding from "@/layouts/variations/Landing.vue";
 import LayoutBackend from "@/layouts/variations/Backend.vue";
 import LayoutBackendBoxed from "@/layouts/variations/BackendBoxed.vue";
 import LayoutBackendMegaMenu from "@/layouts/variations/BackendMegaMenu.vue";
 import LayoutBackendSidebarMiniNav from "@/layouts/variations/BackendSidebarMiniNav.vue";
 
 // Frontend: Landing
-const Landing = () => import("@/views/landing/LandingView.vue");
 
 // Backend Boxed: Dashboard
 const BackendBoxedDashboard = () =>
@@ -252,6 +250,7 @@ const Error503 = () => import("@/views/errors/503View.vue");
 //index fix
 const IndexFix = () => import("@/views/backend/IndexFix.vue");
 const Grupos = () => import("@/views/backend/BotsGrupos.vue");
+const ChartsBot = () => import("@/views/backend/ChartsBot.vue");
 
 // Set all routes
 const routes = [
@@ -286,6 +285,17 @@ const routes = [
         path: "/grupos/:id",
         name: "backend-grupos-id",
         component: Grupos,
+      },
+    ],
+  },
+  {
+    path: "/",
+    component: LayoutBackend,
+    children: [
+      {
+        path: "/charts/:id",
+        name: "bot-charts-id",
+        component: ChartsBot,
       },
     ],
   },

@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, computed, onMounted, nextTick } from "vue";
 import useVuelidate from "@vuelidate/core";
+import { useRouter } from "vue-router";
 import { required, minLength } from "@vuelidate/validators";
 import { useTemplateStore } from "@/stores/template";
 import axios from "axios";
@@ -15,7 +16,7 @@ let toast = Swal.mixin({
     input: "form-control",
   },
 });
-
+const router = useRouter();
 //variables para usar en el componente
 
 const data = reactive({
@@ -166,6 +167,7 @@ async function detener_fix() {
       toast.fire("Success", "Everything was updated perfectly!", "success");
       localStorage.removeItem("securityFix");
       localStorage.removeItem("sesionFix");
+      get_bots();
     })
     .catch((error) => {
       console.log(error);
@@ -440,6 +442,10 @@ function resetFormBot() {
   inputsBots.type_bot = null;
   inputsBots.sizeMax = null;
   inputsBots.spreadMin = "";
+}
+
+function dataBot(id_bot) {
+  router.push({ name: "bot-charts-id", params: { id: id_bot } });
 }
 
 onMounted(async () => {
